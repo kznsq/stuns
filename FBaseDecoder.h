@@ -7,25 +7,20 @@
 #ifndef FBASEDECODER_H
 #define FBASEDECODER_H
 
-#include <windows.h>
-#include <direct.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <conio.h>
-#include <ctype.h>
-#include <assert.h>
+#include <string>
 
 class FBaseDecoder {
-	static HANDLE hInFile, hInFileM;
-	static HANDLE hOutFile, hOutFileM;
 public:
-	#define TEMP_FILE_NAME "$$$tmp$$$.$$$"
-	enum { 
-		MAX_OUT_SIZE = 256*1024*1024
+	enum {
+		MAX_OUT_SIZE = 256*1024*1024,
+		// zero bytes after the input: the UCL decoders may read 1 byte past the end before their bounds check
+		IN_PADDING = 64
 	};
 
-	static char OutDir[_MAX_PATH];
+	static std::string OutDir;
 	char ClassName[64];
 
 	static unsigned char* InData;
@@ -33,16 +28,17 @@ public:
 	static unsigned long InLen, InPos;
 	static unsigned long OutLen, OutPos;
 
-	bool Initialize(char* InFileName);
+	bool Initialize(const char* InFileName);
 	bool Release(void);
 	virtual bool Decompress(void) = 0;
 	bool SaveFile(void);
 
 	FBaseDecoder(void)
 	{
+		ClassName[0] = 0;
 	}
 
-	~FBaseDecoder(void)
+	virtual ~FBaseDecoder(void)
 	{
 		Release();
 	}

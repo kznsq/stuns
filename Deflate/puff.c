@@ -63,6 +63,13 @@
  */
 
 #include <setjmp.h>             /* for setjmp(), longjmp(), and jmp_buf */
+#if defined(__MINGW32__) && defined(__GNUC__)
+/* MinGW longjmp() unwinds through SEH and crashes in optimized GCC code */
+#undef setjmp
+#undef longjmp
+#define setjmp(env) __builtin_setjmp(env)
+#define longjmp(env, v) __builtin_longjmp(env, v)
+#endif
 #include "puff.h"               /* prototype for puff() */
 
 //#define SLOW
@@ -662,6 +669,7 @@ local int dynamic(struct state *s)
         int len;                /* last length to repeat */
 
         symbol = decode(s, &lencode);
+        if (symbol < 0) return symbol;  /* invalid symbol (all code length codes zero) */
         if (symbol < 16)                /* length in 0..15 */
             lengths[index++] = symbol;
         else {                          /* repeat instruction */

@@ -7,7 +7,7 @@
 #ifndef FLZODECODER_H
 #define FLZODECODER_H
 
-#include "..\\FBaseDecoder.h"
+#include "../FBaseDecoder.h"
 
 class FLZODecoder : public FBaseDecoder {
 public:

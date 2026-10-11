@@ -6,139 +6,121 @@
 
 //-----------------------------------------------------------------------------------
 #include "FBaseDecoder.h"
+
+#ifdef _WIN32
+#include <direct.h>
+#define MakeDir(s) _mkdir(s)
+#else
+#include <sys/stat.h>
+#define MakeDir(s) mkdir(s, 0777)
+#endif
 //-----------------------------------------------------------------------------------
-HANDLE FBaseDecoder::hInFile = 0, FBaseDecoder::hInFileM = 0;
-HANDLE FBaseDecoder::hOutFile = 0, FBaseDecoder::hOutFileM = 0;
 unsigned char* FBaseDecoder::InData = NULL;
 unsigned char* FBaseDecoder::OutData = NULL;
 unsigned long FBaseDecoder::InLen = 0, FBaseDecoder::InPos = 0;
 unsigned long FBaseDecoder::OutLen = MAX_OUT_SIZE, FBaseDecoder::OutPos = 0;
-char FBaseDecoder::OutDir[_MAX_PATH] = "";
+std::string FBaseDecoder::OutDir;
 //-----------------------------------------------------------------------------------
-bool FBaseDecoder::Initialize(char* InFileName)
+bool FBaseDecoder::Initialize(const char* InFileName)
 {
-	if(hInFile) return true;
+	if(InData) return true;
 
-	// - input file mapping
-	hInFile = CreateFile(
-		InFileName,
-		GENERIC_READ,
-		FILE_SHARE_READ,
-		NULL,
-		OPEN_EXISTING,
-		FILE_ATTRIBUTE_NORMAL,
-		NULL
-	);
-	
-	if(!hInFile) return false;
+	// - input file, read whole into memory and followed by IN_PADDING zero bytes
+	FILE* in = fopen(InFileName, "rb");
+	if(!in) return false;
 
-	hInFileM = CreateFileMapping(
-		hInFile,
-		NULL,
-		PAGE_READONLY,
-		0, 0, 
-		NULL
-	);
-
-	if(!hInFileM)
+	// decoder lengths are 32-bit
+	const size_t MaxLen = 0xFFFFFFFFUL - IN_PADDING;
+	size_t Size = 0, Len = 0, Got;
+	bool ok = true;
+	for(;;)
 	{
-		CloseHandle(hInFile);
+		if(Len + IN_PADDING >= Size)
+		{
+			if(!Size)
+				Size = 1024 * 1024;
+			else
+				Size = (Size > (MaxLen + IN_PADDING) / 2) ? MaxLen + IN_PADDING : Size * 2;
+			if(Len + IN_PADDING >= Size)
+			{
+				// file too large
+				ok = false;
+				break;
+			}
+			unsigned char* Data = (unsigned char*)realloc(InData, Size);
+			if(!Data)
+			{
+				ok = false;
+				break;
+			}
+			InData = Data;
+		}
+		Got = fread(InData + Len, 1, Size - IN_PADDING - Len, in);
+		Len += Got;
+		if(!Got)
+		{
+			ok = !ferror(in);
+			break;
+		}
+	}
+	fclose(in);
+
+	// - output buffer
+	if(ok)
+	{
+		OutData = (unsigned char*)malloc(MAX_OUT_SIZE);
+		ok = OutData != NULL;
+	}
+
+	if(!ok)
+	{
+		free(InData);
+		InData = NULL;
 		return false;
 	}
 
-	InData = (unsigned char*)MapViewOfFile(
-		hInFileM,
-		FILE_MAP_READ,
-		0, 0, 0
-	);
-
-	if(!InData)
-	{
-	 	CloseHandle(hInFileM);
-		CloseHandle(hInFile);
-		return false;
-	}
-	
-	InLen = GetFileSize(hInFile, NULL);
-
-	// - output file mapping
-	hOutFile = CreateFile(
-		TEMP_FILE_NAME,
-		GENERIC_READ | GENERIC_WRITE,
-		FILE_SHARE_READ,
-		NULL,
-		OPEN_ALWAYS,
-		FILE_ATTRIBUTE_NORMAL,
-		NULL
-	);
-
-	if(!hOutFile) return false;
-
-	hOutFileM = CreateFileMapping(
-		hOutFile,
-		NULL,
-		PAGE_READWRITE,
-		0, MAX_OUT_SIZE,
-		NULL
-	);
-
-	if(!hOutFileM)
-	{
-		CloseHandle(hOutFile);
-		return false;
-	}
-
-	OutData = (unsigned char*)MapViewOfFile(
-		hOutFileM, 
-		FILE_MAP_ALL_ACCESS, 
-		0, 0, 0
-	);
-
-	if(!OutData)
-	{
-	 	CloseHandle(hOutFileM);
-		CloseHandle(hOutFile);
-		return false;
-	}
-
+	memset(InData + Len, 0, IN_PADDING);
+	InLen = (unsigned long)Len;
 	return true;
 }
 //-----------------------------------------------------------------------------------
 bool FBaseDecoder::Release(void)
 {
-	if(!hInFile) return true;
+	if(!InData) return true;
 
-	UnmapViewOfFile(InData);
- 	CloseHandle(hInFileM);
-	CloseHandle(hInFile);
-
-	UnmapViewOfFile(OutData);
-	CloseHandle(hOutFileM);
-	CloseHandle(hOutFile);
-
-	unlink(TEMP_FILE_NAME);
-
-	hInFile = hInFileM = 0;
-	hOutFile = hOutFileM = 0;
+	free(InData);
+	free(OutData);
+	InData = OutData = NULL;
+	InLen = 0;
 
 	return true;
 }
 //-----------------------------------------------------------------------------------
 bool FBaseDecoder::SaveFile(void)
 {
-	char OutDir[_MAX_PATH];
-	if(!FBaseDecoder::OutDir[0])
-		strcpy(FBaseDecoder::OutDir, "!Out");
+	if(OutDir.empty())
+		OutDir = "!Out";
 
-	sprintf(OutDir, "%s%s", FBaseDecoder::OutDir, ClassName);
-	mkdir(OutDir);
+	std::string Dir = OutDir + ClassName;
+	MakeDir(Dir.c_str());
 
-	char OutFileName[_MAX_PATH];
-	sprintf(OutFileName, "%s\\%04x", OutDir, InPos);
-	FILE* out = fopen(OutFileName, "wb");
-	fwrite(OutData, OutLen, 1, out);
-	fclose(out);
-	printf("%s: Succeeded uncompressing %lu bytes at: %u (0x%x)\n", ClassName, OutLen, InPos, InPos);
+	char Name[32];
+	snprintf(Name, sizeof(Name), "/%04lx", InPos);
+	std::string OutFileName = Dir + Name;
+	FILE* out = fopen(OutFileName.c_str(), "wb");
+	if(!out)
+	{
+		printf("%s: Can't create output file: %s\n", ClassName, OutFileName.c_str());
+		return false;
+	}
+	bool ok = fwrite(OutData, 1, OutLen, out) == OutLen;
+	ok = fclose(out) == 0 && ok;
+	if(!ok)
+	{
+		printf("%s: Can't write output file: %s\n", ClassName, OutFileName.c_str());
+		return false;
+	}
+	printf("%s: Succeeded uncompressing %lu bytes at: %lu (0x%lx)\n", ClassName, OutLen, InPos, InPos);
 	return true;
 }
 //-----------------------------------------------------------------------------------

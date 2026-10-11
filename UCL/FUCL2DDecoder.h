@@ -7,7 +7,7 @@
 #ifndef FUCL2DDECODER_H
 #define FUCL2DDECODER_H
 
-#include "..\\FBaseDecoder.h"
+#include "../FBaseDecoder.h"
 
 class FUCL2DDecoder : public FBaseDecoder {
 public:

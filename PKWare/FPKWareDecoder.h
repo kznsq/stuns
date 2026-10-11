@@ -7,7 +7,7 @@
 #ifndef FPKWAREDECODER_H
 #define FPKWAREDECODER_H
 
-#include "..\\FBaseDecoder.h"
+#include "../FBaseDecoder.h"
 
 class FPKWareDecoder : public FBaseDecoder {
 	static unsigned inf(void *parent, unsigned char **buf)
@@ -17,6 +17,9 @@ class FPKWareDecoder : public FBaseDecoder {
 	}
 	static int outf(void *parent, unsigned char *buf, unsigned len)
 	{
+		// output does not fit: blast() stops with an error
+		if(len > MAX_OUT_SIZE - ((FBaseDecoder*)parent)->OutPos)
+			return 1;
 		memcpy(((FBaseDecoder*)parent)->OutData + ((FBaseDecoder*)parent)->OutPos, buf, len);
 		((FBaseDecoder*)parent)->OutPos += len;
 		return 0;

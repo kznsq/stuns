@@ -12,10 +12,10 @@ extern "C" {
 //-----------------------------------------------------------------------------------
 bool FLZODecoder::Decompress(void)
 {
-	unsigned int outLen = MAX_OUT_SIZE;
+	lzo_uint outLen = MAX_OUT_SIZE;
 	int r = lzo1x_decompress_safe(InData+InPos, InLen-InPos, OutData, &outLen, NULL);
 	OutLen = outLen;
-	if(r == LZO_E_OK || r == LZO_E_INPUT_NOT_CONSUMED && OutLen)
+	if((r == LZO_E_OK || r == LZO_E_INPUT_NOT_CONSUMED) && OutLen)
 		return true;
 	return false;
 }

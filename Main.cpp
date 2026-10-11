@@ -4,25 +4,32 @@
  falinc@ukr.net
 ************************************************************************************/
 
-#include <windows.h>
-#include <direct.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <conio.h>
 #include <ctype.h>
-#include <io.h>
-#include <assert.h>
 
-#include "Deflate\\FDeflateDecoder.h"
-#include "PKWare\\FPKWareDecoder.h"
-#include "LZO\\FLZODecoder.h"
-#include "UCL\\FUCL2BDecoder.h"
-#include "UCL\\FUCL2DDecoder.h"
+#include "Deflate/FDeflateDecoder.h"
+#include "PKWare/FPKWareDecoder.h"
+#include "LZO/FLZODecoder.h"
+#include "UCL/FUCL2BDecoder.h"
+#include "UCL/FUCL2DDecoder.h"
+
+// case-insensitive compare of the first n characters, 0 if equal
+static int StrNICmp(const char* a, const char* b, size_t n)
+{
+	for(; n && *a && tolower((unsigned char)*a) == tolower((unsigned char)*b); a++, b++, n--);
+	return n ? tolower((unsigned char)*a) - tolower((unsigned char)*b) : 0;
+}
+
+static int StrICmp(const char* a, const char* b)
+{
+	return StrNICmp(a, b, (size_t)-1);
+}
 
 void Usage(void)
 {
-	printf("STUNS - STupid UNcompreSsor v0.1\n"
+	printf("STUNS - STupid UNcompreSsor v0.2\n"
 			 "(c) Andrii Frolov aka kznsq, 2004\n"
 			 "falinc@ukr.net\n"
 			 "Usage: stuns [options] <filename>\n\n"
@@ -55,54 +62,57 @@ int main(int argc, char **argv)
 {
 	// - input file name
 	char* InFileName = NULL;
+	int i;
 
 	// - command line parsing
-	for(int i = 1; i < argc; i++)
+	for(i = 1; i < argc; i++)
 	{
 		if(*argv[i] == '-')
 		{
-			if(strlen(argv[i]) > strlen("-Out") && memicmp(argv[i], "-Out", strlen("-Out")) == 0)
-				strcpy(FBaseDecoder::OutDir, argv[i]+strlen("-Out"));
+			if(strlen(argv[i]) > strlen("-Out") && StrNICmp(argv[i], "-Out", strlen("-Out")) == 0)
+				FBaseDecoder::OutDir = argv[i]+strlen("-Out");
 			else
-			if(stricmp(argv[i], "-deflate") == 0)
+			if(StrICmp(argv[i], "-deflate") == 0)
 				Decoders[0].isActive = true;
 			else
-			if(stricmp(argv[i], "-deflate-") == 0)
+			if(StrICmp(argv[i], "-deflate-") == 0)
 				Decoders[0].isActive = false;
 			else
-			if(stricmp(argv[i], "-pkware") == 0)
+			if(StrICmp(argv[i], "-pkware") == 0)
 				Decoders[1].isActive = true;
 			else
-			if(stricmp(argv[i], "-pkware-") == 0)
+			if(StrICmp(argv[i], "-pkware-") == 0)
 				Decoders[1].isActive = false;
 			else
-			if(stricmp(argv[i], "-lzo") == 0)
+			if(StrICmp(argv[i], "-lzo") == 0)
 				Decoders[2].isActive = true;
 			else
-			if(stricmp(argv[i], "-lzo-") == 0)
+			if(StrICmp(argv[i], "-lzo-") == 0)
 				Decoders[2].isActive = false;
 			else
-			if(stricmp(argv[i], "-ucl2b") == 0)
+			if(StrICmp(argv[i], "-ucl2b") == 0)
 				Decoders[3].isActive = true;
 			else
-			if(stricmp(argv[i], "-ucl2b-") == 0)
+			if(StrICmp(argv[i], "-ucl2b-") == 0)
 				Decoders[3].isActive = false;
 			else
-			if(stricmp(argv[i], "-ucl2d") == 0)
+			if(StrICmp(argv[i], "-ucl2d") == 0)
 				Decoders[4].isActive = true;
 			else
-			if(stricmp(argv[i], "-ucl2d-") == 0)
+			if(StrICmp(argv[i], "-ucl2d-") == 0)
 				Decoders[4].isActive = false;
 		}
 		else
 			InFileName = argv[i];
 	}
 
-	if(!InFileName || access(InFileName, 0) != 0)
+	FILE* in = InFileName ? fopen(InFileName, "rb") : NULL;
+	if(!in)
 	{
 		Usage();
 		exit(-1);
 	}
+	fclose(in);
 
 	// - create decompressors
 	Decoders[0].decoder = new FDeflateDecoder();
@@ -116,7 +126,11 @@ int main(int argc, char **argv)
 	i = 0;
 	while(Decoders[i].decoder)
 	{
-		Decoders[i].decoder->Initialize(InFileName);
+		if(!Decoders[i].decoder->Initialize(InFileName))
+		{
+			printf("Can't load input file: %s\n", InFileName);
+			exit(-1);
+		}
 		i++;
 	}
 

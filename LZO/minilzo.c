@@ -389,6 +389,12 @@ extern "C" {
 #    endif
 #  endif
 #endif
+#if !defined(__LZO_HAVE_PTR_T) && defined(_WIN64)
+     /* 64-bit Windows: long is 32-bit, pointers are 64-bit */
+     typedef unsigned long long lzo_ptr_t;
+     typedef long long          lzo_sptr_t;
+#    define __LZO_HAVE_PTR_T
+#endif
 #if !defined(__LZO_HAVE_PTR_T)
 #  if defined(LZO_HAVE_CONFIG_H) || defined(SIZEOF_CHAR_P)
 #    error "no suitable type for lzo_ptr_t"

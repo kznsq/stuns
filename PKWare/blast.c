@@ -25,6 +25,13 @@
  */
 
 #include <setjmp.h>             /* for setjmp(), longjmp(), and jmp_buf */
+#if defined(__MINGW32__) && defined(__GNUC__)
+/* MinGW longjmp() unwinds through SEH and crashes in optimized GCC code */
+#undef setjmp
+#undef longjmp
+#define setjmp(env) __builtin_setjmp(env)
+#define longjmp(env, v) __builtin_longjmp(env, v)
+#endif
 #include "blast.h"              /* prototype for blast() */
 
 #define local static            /* for local function definitions */

@@ -1,0 +1,42 @@
+name: build
+
+on: [push, pull_request]
+
+jobs:
+  make:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            cflags: -O2 -Wall
+          - os: ubuntu-latest
+            cflags: -O2 -Wall -m32
+            multilib: true
+          - os: macos-latest
+            cflags: -O2 -Wall
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - if: matrix.multilib
+        run: sudo apt-get update && sudo apt-get install -y gcc-multilib g++-multilib
+      - run: make CFLAGS="${{ matrix.cflags }}"
+      - run: make test
+
+  msvc:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: cmake -S . -B build
+      - run: cmake --build build --config Release
+      - run: sh tests/run.sh build/Release/stuns.exe
+        shell: bash
+
+  mingw:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: make CC=gcc CXX=g++
+        shell: bash
+      - run: sh tests/run.sh ./stuns.exe
+        shell: bash

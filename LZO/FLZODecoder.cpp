@@ -1,22 +1,18 @@
 /************************************************************************************
- STUNS v0.1
- (c) Andrii Frolov aka kznsq, 2004
+ STUNS v1.0
+ (c) Andrii Frolov aka kznsq, 2004-2026
  falinc@ukr.net
 ************************************************************************************/
 
-//-----------------------------------------------------------------------------------
 #include "FLZODecoder.h"
+
 extern "C" {
 #include "minilzo.h"
-};
-//-----------------------------------------------------------------------------------
-bool FLZODecoder::Decompress(void)
-{
-	lzo_uint outLen = MAX_OUT_SIZE;
-	int r = lzo1x_decompress_safe(InData+InPos, InLen-InPos, OutData, &outLen, NULL);
-	OutLen = outLen;
-	if((r == LZO_E_OK || r == LZO_E_INPUT_NOT_CONSUMED) && OutLen)
-		return true;
-	return false;
 }
-//-----------------------------------------------------------------------------------
+
+std::size_t FLZODecoder::Decompress(std::span<const std::uint8_t> in, std::span<std::uint8_t> out) const
+{
+	lzo_uint outLen = Len32(out.size());
+	const int r = lzo1x_decompress_safe(in.data(), Len32(in.size()), out.data(), &outLen, nullptr);
+	return (r == LZO_E_OK || r == LZO_E_INPUT_NOT_CONSUMED) ? outLen : 0;
+}

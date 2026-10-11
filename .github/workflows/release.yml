@@ -1,0 +1,54 @@
+name: release
+
+# pushing a version tag (v1.0, ...) builds the binaries and publishes them as a release
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: make CFLAGS="-O2 -Wall" LDFLAGS="-static"
+      - run: make test
+      - run: mkdir dist && cp stuns dist/stuns-linux-x64
+      - uses: actions/upload-artifact@v4
+        with: {name: linux, path: dist}
+
+  macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: make CFLAGS="-O2 -Wall -arch x86_64 -arch arm64 -mmacosx-version-min=13.3" LDFLAGS="-arch x86_64 -arch arm64 -mmacosx-version-min=13.3"
+      - run: make test
+      - run: mkdir dist && cp stuns dist/stuns-macos-universal
+      - uses: actions/upload-artifact@v4
+        with: {name: macos, path: dist}
+
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: cmake -S . -B build -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded
+      - run: cmake --build build --config Release
+      - run: sh tests/run.sh build/Release/stuns.exe
+        shell: bash
+      - run: mkdir dist && cp build/Release/stuns.exe dist/stuns-windows-x64.exe
+        shell: bash
+      - uses: actions/upload-artifact@v4
+        with: {name: windows, path: dist}
+
+  publish:
+    needs: [linux, macos, windows]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with: {path: dist, merge-multiple: true}
+      - run: gh release create "$GITHUB_REF_NAME" dist/* --title "STUNS $GITHUB_REF_NAME" --notes-file .github/release-notes.md
+        env:
+          GH_TOKEN: ${{ github.token }}

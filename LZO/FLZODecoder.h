@@ -1,6 +1,6 @@
 /************************************************************************************
- STUNS v0.1
- (c) Andrii Frolov aka kznsq, 2004
+ STUNS v1.0
+ (c) Andrii Frolov aka kznsq, 2004-2026
  falinc@ukr.net
 ************************************************************************************/
 
@@ -9,18 +9,12 @@
 
 #include "../FBaseDecoder.h"
 
-class FLZODecoder : public FBaseDecoder {
+// LZO1X through miniLZO
+class FLZODecoder final : public FBaseDecoder
+{
 public:
-	bool Decompress(void);
-
-	FLZODecoder(void) : FBaseDecoder()
-	{
-		strcpy(ClassName, "LZO");
-	}
-
-	~FLZODecoder(void)
-	{
-	}
+	FLZODecoder() : FBaseDecoder("LZO") {}
+	std::size_t Decompress(std::span<const std::uint8_t> in, std::span<std::uint8_t> out) const override;
 };
 
 #endif

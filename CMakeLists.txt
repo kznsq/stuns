@@ -1,12 +1,19 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.15)
 project(stuns C CXX)
 
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
 add_executable(stuns
-  Main.cpp FBaseDecoder.cpp
+  Main.cpp FAnalysis.cpp
   Deflate/FDeflateDecoder.cpp Deflate/puff.c
   PKWare/FPKWareDecoder.cpp PKWare/blast.c
   LZO/FLZODecoder.cpp LZO/minilzo.c
-  UCL/FUCL2BDecoder.cpp UCL/FUCL2DDecoder.cpp UCL/n2b_ds.c UCL/n2d_ds.c
+  UCL/FUCLDecoder.cpp UCL/n2b_ds.c UCL/n2d_ds.c UCL/n2e_ds.c
+  LZ4/FLZ4Decoder.cpp
+  LZMA/FLZMADecoder.cpp
+  aPLib/FAPLibDecoder.cpp
 )
 target_include_directories(stuns PRIVATE UCL)
 

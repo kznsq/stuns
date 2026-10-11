@@ -1,47 +1,49 @@
 /************************************************************************************
- STUNS v0.1
- (c) Andrii Frolov aka kznsq, 2004
+ STUNS v1.0
+ (c) Andrii Frolov aka kznsq, 2004-2026
  falinc@ukr.net
 ************************************************************************************/
 
 #ifndef FBASEDECODER_H
 #define FBASEDECODER_H
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <algorithm>
+#include <cstddef>
+#include <cstdint>
+#include <limits>
+#include <span>
 #include <string>
+#include <utility>
 
-class FBaseDecoder {
+// Zero bytes kept after the input data: miniLZO 1.08 and the UCL decoders read up to
+// 7 bytes past the end of their input before their bounds checks stop them.
+inline constexpr std::size_t InputPadding = 64;
+
+// One compression format. Decompress() tries to decode a stream starting at the first
+// byte of in, which is always followed by InputPadding readable zero bytes.
+class FBaseDecoder
+{
 public:
-	enum {
-		MAX_OUT_SIZE = 256*1024*1024,
-		// zero bytes after the input: the UCL decoders may read 1 byte past the end before their bounds check
-		IN_PADDING = 64
-	};
+	explicit FBaseDecoder(std::string name) : Name(std::move(name)) {}
+	virtual ~FBaseDecoder() = default;
 
-	static std::string OutDir;
-	char ClassName[64];
+	FBaseDecoder(const FBaseDecoder&) = delete;
+	FBaseDecoder& operator=(const FBaseDecoder&) = delete;
 
-	static unsigned char* InData;
-	static unsigned char* OutData;
-	static unsigned long InLen, InPos;
-	static unsigned long OutLen, OutPos;
+	const std::string& GetName() const { return Name; }
 
-	bool Initialize(const char* InFileName);
-	bool Release(void);
-	virtual bool Decompress(void) = 0;
-	bool SaveFile(void);
+	// returns the decoded size, or 0 if no stream starts here
+	virtual std::size_t Decompress(std::span<const std::uint8_t> in, std::span<std::uint8_t> out) const = 0;
 
-	FBaseDecoder(void)
+protected:
+	// the format libraries take 32-bit lengths
+	static std::uint32_t Len32(std::size_t len)
 	{
-		ClassName[0] = 0;
+		return static_cast<std::uint32_t>(std::min<std::size_t>(len, std::numeric_limits<std::uint32_t>::max()));
 	}
 
-	virtual ~FBaseDecoder(void)
-	{
-		Release();
-	}
+private:
+	std::string Name;
 };
 
 #endif

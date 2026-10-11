@@ -122,6 +122,16 @@ v1.0 (2026)
 
 v0.1 (2004) - first version, Win32 / MSVC 6
 
+## License
+
+STUNS is free software: you can redistribute it and/or modify it under the terms of
+the GNU General Public License as published by the Free Software Foundation, either
+version 2 of the License, or (at your option) any later version. See [LICENSE](LICENSE).
+
+STUNS is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+PURPOSE. See the GNU General Public License for more details.
+
 ## Third-party code
 
 | Directory | Library | License |
@@ -132,4 +142,4 @@ v0.1 (2004) - first version, Win32 / MSVC 6
 | `UCL`     | UCL 0.92 decompressors; NRV2E from the UCL 1.03 change (Markus F.X.J. Oberhumer) | GPL v2 or later |
 
 The LZ4, LZMA and aPLib decoders and the analysis are original code, written from the
-format descriptions.
+format descriptions. The zlib-licensed puff and blast may be combined with GPL code.

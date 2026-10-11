@@ -11,6 +11,11 @@ CXXSRC = Main.cpp FAnalysis.cpp \
          UCL/FUCLDecoder.cpp LZ4/FLZ4Decoder.cpp LZMA/FLZMADecoder.cpp aPLib/FAPLibDecoder.cpp
 OBJ = $(CSRC:.c=.o) $(CXXSRC:.cpp=.o)
 
+# MinGW: link the C++ runtime in, an older libstdc++ DLL found first on PATH breaks C++20
+ifeq ($(OS),Windows_NT)
+LDFLAGS += -static
+endif
+
 $(TARGET): $(OBJ)
 	$(CXX) $(CXXSTD) $(CXXFLAGS) -o $@ $(OBJ) $(LDFLAGS)
 
